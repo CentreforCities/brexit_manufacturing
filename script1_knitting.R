@@ -47,6 +47,10 @@ for (year in years) {
     group_by(PUA) %>%
     summarize(across(-c('LA_Code', 'LA_Name'), sum, na.rm = TRUE), .groups = 'drop')
   
+  # Add ind_01 as the sum of all other industries
+  collapsed_data <- collapsed_data %>%
+    mutate(ind_01 = rowSums(across(starts_with("ind_")), na.rm = TRUE))
+  
   # Rename columns with years
   collapsed_data <- collapsed_data %>%
     rename_with(~paste0(., "_", year), -c('PUA'))
@@ -67,9 +71,6 @@ long_data <- joined_data %>%
     values_to = "employment"
   ) %>%
   mutate(industry_code = paste0("ind_", industry_code))
-
-# Save the long format data to a file
-write.csv(long_data, "long_data.csv", row.names = FALSE)
 
 # Create a new PUA called "England" that sums every industry across all PUAs
 england_data <- long_data %>%
@@ -213,8 +214,44 @@ final_data <- final_data %>%
 final_data <- final_data %>%
   left_join(industry_labels, by = "industry_code")
 
+path <- paste0(dirname("~"), "/Centre for Cities/Centre for Cities POC - Documents/Research/Business and Enterprise/Manufacturing Brexit/Outputs/", collapse = NULL)
+setwd(path)
+
+
 # Save the final data with labels to a file
 write.csv(final_data, "final_data.csv", row.names = FALSE)
 
 # Display the first few rows of the final data with labels
 head(final_data)
+
+#loading packages
+
+library(readxl)
+library(openxlsx)
+library(sf)
+library(dplyr)
+
+#setting working directory
+
+dirpath <- paste0(dirname("~"), "Centre for Cities/Centre For Cities POC - Documents/Research/Business and Enterprise/Manufacturing Brexit/Raw Data")
+setwd(dirpath)
+
+# reading in GPKGs and renaming for merging -------------------------------------------------------------------
+
+#read in GPKGs
+
+GPKG <- read_sf("C:/Users/t.tu/Centre for Cities/Centre For Cities POC - Documents/Research/Core Data/GIS/PUAs/2019 PUAs/Polygons/Clipped/Dissolved/EW/2023-12-01_PUA_Clip_Dis_EW.gpkg")
+
+# reading in data -----------------------------------------------------------------------------------
+
+data <- read.csv("final_data.csv")
+
+# merging data with GPKGs ---------------------------------------------------------------------------
+
+Geo_data <- merge(data, GPKG, by.x = "PUA", by.y = "PUA", all.x = TRUE)
+
+# writing GPKGs for mapping
+
+Geo_data <- write_sf(Geo_data, "C:/Users/t.tu/Centre for Cities/Centre For Cities POC - Documents/Research/Business and Enterprise/Manufacturing Brexit/Outputs/2024_07_31_Geo_manufacturing.gpkg")
+
+
